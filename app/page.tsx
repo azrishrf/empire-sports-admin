@@ -262,7 +262,7 @@ match /orders/{orderId} {
         </div>
 
         {/* Quick Actions */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="text-primary">Quick Actions</CardTitle>
             <CardDescription>Common administrative tasks</CardDescription>
@@ -277,7 +277,7 @@ match /orders/{orderId} {
               View Alerts
             </Button>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     );
   };

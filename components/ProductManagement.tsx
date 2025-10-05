@@ -51,8 +51,9 @@ export function ProductManagement() {
     availability: "IN STOCK",
     stock: 0,
   });
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  // Single image state (we are not supporting multiple images now)
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Load data
   const loadProducts = useCallback(async () => {
@@ -108,14 +109,19 @@ export function ProductManagement() {
       setIsSubmitting(true);
 
       if (editingProduct) {
-        await ProductAdminService.updateProduct(editingProduct.id, formData, imageFiles);
+        // Only upload a new image if a replacement was selected
+        if (imageFile) {
+          await ProductAdminService.updateProduct(editingProduct.id, formData, [imageFile]);
+        } else {
+          await ProductAdminService.updateProduct(editingProduct.id, formData);
+        }
         toast.success("Product updated successfully");
       } else {
-        if (imageFiles.length === 0) {
-          toast.error("Please select at least one product image");
+        if (!imageFile) {
+          toast.error("Please select a product image");
           return;
         }
-        await ProductAdminService.addProduct(formData, imageFiles);
+        await ProductAdminService.addProduct(formData, [imageFile]);
         toast.success("Product added successfully");
       }
 
@@ -135,7 +141,11 @@ export function ProductManagement() {
     if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
-      await ProductAdminService.deleteProduct(product.id, product.images);
+      // Pass single image as array if present (legacy cleanup)
+      const imagesToDelete =
+        (product as unknown as { images?: string[]; image?: string }).images ||
+        ((product as unknown as { image?: string }).image ? [(product as unknown as { image?: string }).image!] : []);
+      await ProductAdminService.deleteProduct(product.id, imagesToDelete);
       toast.success("Product deleted successfully");
       loadProducts();
     } catch (error) {
@@ -158,12 +168,11 @@ export function ProductManagement() {
 
   // Handle image selection
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setImageFiles(files);
-
-    // Create previews
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews(previews);
+    const file = (e.target.files && e.target.files[0]) || null;
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
   };
 
   // Reset form
@@ -181,8 +190,9 @@ export function ProductManagement() {
       availability: "IN STOCK",
       stock: 0,
     });
-    setImageFiles([]);
-    setImagePreviews([]);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
     setEditingProduct(null);
   };
 
@@ -202,7 +212,12 @@ export function ProductManagement() {
       availability: product.availability || "IN STOCK",
       stock: (product as Product & { stock?: number }).stock || 0,
     });
-    setImagePreviews(product.images || []);
+    // Prefer product.image field; fallback to first images[] entry if exists
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    const legacy = product as unknown as { image?: string; images?: string[] };
+    const existing = legacy.image || (legacy.images && legacy.images[0]) || null;
+    setImagePreview(existing || null);
+    setImageFile(null); // Clear so we don't accidentally re-upload old preview
     setIsDialogOpen(true);
   };
 
@@ -546,56 +561,48 @@ export function ProductManagement() {
               </div>
             </div>
 
-            {/* Image Upload */}
+            {/* Image Upload (Single Image) */}
             <div>
-              <Label htmlFor="images">Product Images</Label>
+              <Label htmlFor="image">Product Image {editingProduct ? "" : "*"}</Label>
               <div className="mt-2">
-                <div className="flex w-full items-center justify-center">
-                  <label
-                    htmlFor="images"
-                    className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100"
-                  >
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="mb-4 h-8 w-8 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> product images
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG, or JPEG (MAX. 5MB each)</p>
+                {imagePreview ? (
+                  <div className="relative w-full max-w-xs">
+                    <div className="relative h-40 w-full overflow-hidden rounded-md border">
+                      <Image src={imagePreview} alt="Preview" fill className="object-cover" />
                     </div>
-                    <input
-                      id="images"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Image Previews */}
-                {imagePreviews.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <div className="relative h-24 w-full">
-                          <Image src={preview} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newPreviews = imagePreviews.filter((_, i) => i !== index);
-                            const newFiles = imageFiles.filter((_, i) => i !== index);
-                            setImagePreviews(newPreviews);
-                            setImageFiles(newFiles);
-                          }}
-                          className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                    <div className="mt-2 flex gap-2">
+                      <label
+                        htmlFor="image"
+                        className="flex flex-1 cursor-pointer items-center justify-center rounded-md border bg-gray-50 py-2 text-sm hover:bg-gray-100"
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Replace
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (imagePreview) URL.revokeObjectURL(imagePreview);
+                          setImagePreview(null);
+                          setImageFile(null);
+                        }}
+                        className="flex items-center justify-center rounded-md border bg-red-500 px-3 text-sm text-white hover:bg-red-600"
+                      >
+                        <X className="mr-1 h-4 w-4" /> Remove
+                      </button>
+                    </div>
+                    <input id="image" type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                   </div>
+                ) : (
+                  <label
+                    htmlFor="image"
+                    className="flex h-40 w-full max-w-xs cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100"
+                  >
+                    <Upload className="mb-3 h-8 w-8 text-gray-500" />
+                    <p className="text-sm text-gray-600">
+                      <span className="font-semibold">Click to upload</span>
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX 5MB)</p>
+                    <input id="image" type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                  </label>
                 )}
               </div>
             </div>

@@ -105,7 +105,7 @@ It provides a modern, responsive interface for store management with real-time d
 **Default Admin Account:**
 
 - Email: `admin@empiresports.com`
-- Password: `123456`
+- Password: `Admin12345`
 
 ### Route Structure
 

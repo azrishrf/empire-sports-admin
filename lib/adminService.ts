@@ -1,5 +1,6 @@
 import { auth, db } from "@/lib/firebase";
 import { Order } from "@/lib/orderService";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 
 export interface AdminStats {
@@ -28,15 +29,37 @@ export type ChartPeriod = "day" | "month";
 
 export class AdminService {
   /**
+   * Internal helper to safely obtain the currently authenticated user.
+   * Firebase sets auth state asynchronously on page refresh; relying solely on auth.currentUser
+   * can cause transient "User not authenticated" errors. This waits (once) for the auth state
+   * restoration. A short timeout guards against hanging forever.
+   */
+  private static async requireUser(timeoutMs: number = 4000): Promise<User> {
+    // Fast path
+    if (auth.currentUser) return auth.currentUser;
+
+    return await new Promise<User>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unsubscribe();
+        reject(new Error("Authentication timeout – user not resolved in time"));
+      }, timeoutMs);
+
+      const unsubscribe = onAuthStateChanged(auth, (u) => {
+        if (u) {
+          clearTimeout(timer);
+          unsubscribe();
+          resolve(u);
+        }
+      });
+    });
+  }
+  /**
    * Get admin dashboard statistics - prioritizing real Firestore data
    */
   static async getDashboardStats(): Promise<AdminStats> {
     try {
-      // Check if user is authenticated
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User not authenticated - please sign in to access admin data");
-      }
+      // Ensure we have an authenticated user (waits for Firebase to hydrate on refresh)
+      await this.requireUser();
 
       console.log("Fetching real dashboard data from Firestore...");
 
@@ -142,10 +165,7 @@ export class AdminService {
    */
   static async getRecentOrders(limitCount: number = 10): Promise<Order[]> {
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User not authenticated - please sign in to access orders data");
-      }
+      await this.requireUser();
 
       console.log("Fetching real orders data from Firestore...");
 
@@ -180,10 +200,10 @@ export class AdminService {
    */
   static async getTopProducts(limitCount: number = 5): Promise<TopProduct[]> {
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        console.warn("User not authenticated");
-      }
+      // We don't strictly need the user object here beyond ensuring auth context is ready.
+      await this.requireUser().catch(() => {
+        console.warn("User not authenticated (continuing: top products will rely on security rules)");
+      });
 
       try {
         console.log("Fetching real top products data from Firestore...");
@@ -253,10 +273,7 @@ export class AdminService {
    */
   static async getChartData(period: ChartPeriod = "month"): Promise<ChartDataPoint[]> {
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User not authenticated - please sign in to access chart data");
-      }
+      await this.requireUser();
 
       console.log(`Fetching chart data for ${period} view...`);
 

@@ -1,5 +1,6 @@
 import { Product } from "@/data/products";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { uploadFile } from "@uploadcare/upload-client";
 import {
   addDoc,
   collection,
@@ -12,7 +13,6 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 export interface ProductFormData {
   name: string;
@@ -56,6 +56,7 @@ export class ProductAdminService {
   // Add new product
   static async addProduct(productData: ProductFormData, imageFiles: File[]): Promise<string> {
     try {
+      console.log("test: ", imageFiles);
       // Upload images first
       const imageUrls = await this.uploadProductImages(imageFiles);
 
@@ -123,16 +124,20 @@ export class ProductAdminService {
     }
   }
 
-  // Upload product images to Firebase Storage
+  // Upload product images to Uploadcare
   static async uploadProductImages(files: File[]): Promise<string[]> {
     try {
       const uploadPromises = files.map(async (file) => {
-        const timestamp = Date.now();
-        const fileName = `products/${timestamp}-${file.name}`;
-        const storageRef = ref(storage, fileName);
+        const result = await uploadFile(file, {
+          publicKey: process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY!,
+          store: "auto",
+          metadata: {
+            filename: file.name,
+            contentType: file.type,
+          },
+        });
 
-        const snapshot = await uploadBytes(storageRef, file);
-        return await getDownloadURL(snapshot.ref);
+        return result.cdnUrl;
       });
 
       return await Promise.all(uploadPromises);
@@ -142,15 +147,22 @@ export class ProductAdminService {
     }
   }
 
-  // Delete product images from Firebase Storage
+  // Delete product images from Uploadcare
   static async deleteProductImages(imageUrls: string[]): Promise<void> {
     try {
-      const deletePromises = imageUrls.map(async (url) => {
-        const imageRef = ref(storage, url);
-        await deleteObject(imageRef);
-      });
+      // Extract file UUIDs from Uploadcare CDN URLs
+      const fileUuids = imageUrls
+        .map((url) => {
+          const match = url.match(/\/([a-f0-9-]{36})\//);
+          return match ? match[1] : null;
+        })
+        .filter((uuid) => uuid !== null);
 
-      await Promise.all(deletePromises);
+      if (fileUuids.length > 0) {
+        // Note: File deletion requires a secret key and should be done server-side
+        // For client-side operations, files will remain until manual cleanup
+        console.log("File UUIDs for deletion:", fileUuids);
+      }
     } catch (error) {
       console.error("Error deleting images:", error);
       // Don't throw error for image deletion failures
