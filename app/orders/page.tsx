@@ -4,12 +4,13 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminService } from "@/lib/adminService";
 import { Order } from "@/lib/orderService";
-import { ChevronLeft, ChevronRight, Download, Eye, Filter, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 // Helper function
@@ -23,18 +24,12 @@ const formatCurrency = (amount: number) => {
 
 const getStatusVariant = (status: string) => {
   switch (status.toLowerCase()) {
-    case "confirmed":
     case "success":
-    case "delivered":
       return "default" as const;
     case "pending":
-    case "processing":
       return "secondary" as const;
     case "failed":
-    case "cancelled":
       return "destructive" as const;
-    case "shipped":
-      return "outline" as const;
     default:
       return "outline" as const;
   }
@@ -46,6 +41,8 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -162,7 +159,7 @@ export default function OrdersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-primary text-2xl font-bold">
-                {orders.filter((o) => ["confirmed", "success", "delivered"].includes(o.status.toLowerCase())).length}
+                {orders.filter((o) => ["success", "delivered"].includes(o.status.toLowerCase())).length}
               </div>
               <p className="text-muted-foreground text-xs">Successfully completed</p>
             </CardContent>
@@ -189,10 +186,10 @@ export default function OrdersPage() {
                 <CardTitle className="text-primary">Order Management</CardTitle>
                 <CardDescription>View and manage customer orders</CardDescription>
               </div>
-              <Button onClick={handleExportOrders} variant="outline">
+              {/* <Button onClick={handleExportOrders} variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export Orders
-              </Button>
+              </Button> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -215,10 +212,8 @@ export default function OrdersPage() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -258,7 +253,14 @@ export default function OrdersPage() {
                           {order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : "N/A"}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setIsDetailsOpen(true);
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -274,6 +276,95 @@ export default function OrdersPage() {
                 </p>
               </div>
             )}
+
+            {/* Order Details Dialog */}
+            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+              <DialogContent className="!max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Order Details</DialogTitle>
+                </DialogHeader>
+                {selectedOrder && (
+                  <div className="space-y-6">
+                    {/* Order Summary */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Order Information</h4>
+                      <div className="grid gap-2 text-sm">
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Order ID:</span>
+                          <span className="font-medium">{selectedOrder.orderId}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Date:</span>
+                          <span>
+                            {selectedOrder.createdAt
+                              ? new Date(selectedOrder.createdAt.seconds * 1000).toLocaleString()
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Status:</span>
+                          <Badge variant={getStatusVariant(selectedOrder.status)}>
+                            {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Customer Information */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Customer Information</h4>
+                      <div className="grid gap-2 text-sm">
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Name:</span>
+                          <span>{selectedOrder.customerName}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Email:</span>
+                          <span>{selectedOrder.customerEmail}</span>
+                        </div>
+                        <div className="grid grid-cols-2">
+                          <span className="text-muted-foreground">Phone:</span>
+                          <span>{selectedOrder.customerPhone || "N/A"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Items */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Order Items</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead>Size</TableHead>
+                            <TableHead>Quantity</TableHead>
+                            <TableHead className="text-right">Price</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedOrder.items.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{item.name}</TableCell>
+                              <TableCell>{item.size}</TableCell>
+                              <TableCell>{item.quantity}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-right font-medium">
+                              Total:
+                            </TableCell>
+                            <TableCell className="text-right font-bold">
+                              {formatCurrency(selectedOrder.totalAmount)}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Pagination Controls */}
             {filteredOrders.length > itemsPerPage && (

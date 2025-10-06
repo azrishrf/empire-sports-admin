@@ -33,7 +33,7 @@ export interface Order {
   shippingFee: number;
   discount: number;
   totalAmount: number;
-  status: "pending" | "success" | "failed" | "cancelled" | "processing" | "shipped" | "delivered";
+  status: "pending" | "success" | "failed";
   paymentStatus: "pending" | "success" | "failed";
   billCode?: string;
   transactionId?: string;
@@ -170,7 +170,7 @@ export class OrderService {
     try {
       const updates: Partial<Order> = {
         paymentStatus: paymentData.status,
-        status: paymentData.status === "success" ? "processing" : "failed",
+        status: paymentData.status === "success" ? "success" : "failed",
         updatedAt: Timestamp.now(),
       };
 

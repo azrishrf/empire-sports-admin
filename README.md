@@ -26,7 +26,7 @@ It provides a modern, responsive interface for store management with real-time d
 ### 🧾 Order Management
 
 - **Comprehensive Order View**: Display all customer orders with detailed information
-- **Advanced Filtering**: Filter by order status (Pending, Confirmed, Shipped, Delivered, Cancelled)
+- **Advanced Filtering**: Filter by order status (Pending, Success, Failed)
 - **Search Functionality**: Search orders by Order ID or customer name
 - **Order Statistics**: Real-time counts for total, pending, and completed orders
 - **Revenue Tracking**: Total revenue calculation from all orders

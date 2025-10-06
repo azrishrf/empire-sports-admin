@@ -96,7 +96,7 @@ export class ServerOrderService {
       // Also update main status if payment is successful
       if (paymentData.status === "success") {
         await orderRef.update({
-          status: "confirmed",
+          status: "success",
         });
       }
 

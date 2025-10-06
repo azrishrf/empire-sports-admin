@@ -2,12 +2,11 @@
 
 import { AdminLayout } from "@/components/AdminLayout";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminService, AdminStats, TopProduct } from "@/lib/adminService";
 import { Order } from "@/lib/orderService";
-import { Bell, DollarSign, Package, ShoppingCart, Users } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 // Helper functions
@@ -21,18 +20,12 @@ const formatCurrency = (amount: number) => {
 
 const getStatusVariant = (status: string) => {
   switch (status.toLowerCase()) {
-    case "confirmed":
     case "success":
-    case "delivered":
       return "default" as const; // Green
     case "pending":
-    case "processing":
       return "secondary" as const; // Yellow/amber
     case "failed":
-    case "cancelled":
       return "destructive" as const; // Red
-    case "shipped":
-      return "outline" as const; // Gray/neutral
     default:
       return "outline" as const;
   }
