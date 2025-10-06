@@ -527,6 +527,51 @@ export function ProductManagement() {
               </div>
             </div>
 
+            {/* Sizes */}
+            <div className="space-y-2">
+              <Label htmlFor="sizes">Sizes</Label>
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="sizes"
+                  placeholder="Add size (e.g., S, M, L or UK 40, US 41, EU 42)"
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const input = e.currentTarget;
+                      const size = input.value.trim().toUpperCase();
+                      if (size && !formData.sizes.includes(size)) {
+                        setFormData({
+                          ...formData,
+                          sizes: [...formData.sizes, size],
+                        });
+                        input.value = "";
+                      }
+                    }
+                  }}
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.sizes.map((size, index) => (
+                    <Badge key={size} variant="secondary" className="flex items-center gap-1">
+                      {size}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            sizes: formData.sizes.filter((_, i) => i !== index),
+                          });
+                        }}
+                        className="hover:bg-primary/10 ml-1 rounded-full p-1"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Gender and Availability */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

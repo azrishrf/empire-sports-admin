@@ -56,7 +56,6 @@ export class ProductAdminService {
   // Add new product
   static async addProduct(productData: ProductFormData, imageFiles: File[]): Promise<string> {
     try {
-      console.log("test: ", imageFiles);
       // Upload images first
       const imageUrls = await this.uploadProductImages(imageFiles);
 
