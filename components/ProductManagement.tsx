@@ -326,7 +326,10 @@ export function ProductManagement() {
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="font-medium">{formatPrice(product.price)}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium">
+                      {(product as Product & { stock?: number }).stock || 0}
+                    </TableCell>
+                    {/* <TableCell>
                       <Input
                         type="number"
                         min="0"
@@ -334,7 +337,7 @@ export function ProductManagement() {
                         onBlur={(e) => handleStockUpdate(product.id, parseInt(e.target.value) || 0)}
                         className="w-20"
                       />
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       <Badge variant={product.availability === "IN STOCK" ? "default" : "destructive"}>
                         {product.availability}
@@ -478,9 +481,22 @@ export function ProductManagement() {
                 <Label htmlFor="price">Price (RM) *</Label>
                 <Input
                   id="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
                   placeholder="299.00"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  value={formData.price ? parseFloat(formData.price.replace("RM", "")) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      setFormData({ ...formData, price: "" });
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setFormData({ ...formData, price: `RM${numValue.toFixed(2)}` });
+                      }
+                    }
+                  }}
                   required
                 />
               </div>
@@ -527,6 +543,40 @@ export function ProductManagement() {
               </div>
             </div>
 
+            {/* Gender and Availability */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Men">Men</SelectItem>
+                    <SelectItem value="Women">Women</SelectItem>
+                    <SelectItem value="Unisex">Unisex</SelectItem>
+                    <SelectItem value="Kids">Kids</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="availability">Availability</Label>
+                <Select
+                  value={formData.availability}
+                  onValueChange={(value) => setFormData({ ...formData, availability: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IN STOCK">In Stock</SelectItem>
+                    <SelectItem value="OUT OF STOCK">Out of Stock</SelectItem>
+                    <SelectItem value="PREORDER">Pre-order</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Sizes */}
             <div className="space-y-2">
               <Label htmlFor="sizes">Sizes</Label>
@@ -569,40 +619,6 @@ export function ProductManagement() {
                     </Badge>
                   ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Gender and Availability */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="gender">Gender</Label>
-                <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Men">Men</SelectItem>
-                    <SelectItem value="Women">Women</SelectItem>
-                    <SelectItem value="Unisex">Unisex</SelectItem>
-                    <SelectItem value="Kids">Kids</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="availability">Availability</Label>
-                <Select
-                  value={formData.availability}
-                  onValueChange={(value) => setFormData({ ...formData, availability: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IN STOCK">In Stock</SelectItem>
-                    <SelectItem value="OUT OF STOCK">Out of Stock</SelectItem>
-                    <SelectItem value="PREORDER">Pre-order</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
 

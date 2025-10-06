@@ -245,12 +245,6 @@ export class AdminService {
           .sort((a, b) => b.sales - a.sales) // Sort by sales descending (highest first)
           .slice(0, limitCount);
 
-        console.log("test: ", topProducts);
-
-        console.log(
-          `Successfully calculated top ${topProducts.length} products by sales:`,
-          topProducts.map((p) => `${p.name}: ${p.sales} sales`),
-        );
 
         return topProducts;
       } catch (firestoreError) {

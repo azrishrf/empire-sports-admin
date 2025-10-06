@@ -2,7 +2,6 @@ import { Product } from "@/data/products";
 import { db } from "@/lib/firebase";
 import { uploadFile } from "@uploadcare/upload-client";
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -10,6 +9,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -53,22 +53,33 @@ export class ProductAdminService {
     }
   }
 
+  // Convert string to kebab-case
+  private static toKebabCase(str: string): string {
+    return str
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
   // Add new product
   static async addProduct(productData: ProductFormData, imageFiles: File[]): Promise<string> {
     try {
       // Upload images first
       const imageUrls = await this.uploadProductImages(imageFiles);
+      const docId = this.toKebabCase(productData.name);
 
       const newProduct = {
         ...productData,
         image: imageUrls[0] || "",
-        images: imageUrls,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(collection(db, "products"), newProduct);
-      return docRef.id;
+      const productRef = doc(collection(db, "products"), docId);
+
+      await setDoc(productRef, newProduct);
+      return docId;
     } catch (error) {
       console.error("Error adding product:", error);
       throw new Error("Failed to add product");
@@ -83,7 +94,6 @@ export class ProductAdminService {
   ): Promise<void> {
     try {
       const updateData: Partial<ProductFormData> & {
-        images?: string[];
         image?: string;
         updatedAt: ReturnType<typeof serverTimestamp>;
       } = {
@@ -94,7 +104,6 @@ export class ProductAdminService {
       // Upload new images if provided
       if (newImageFiles && newImageFiles.length > 0) {
         const imageUrls = await this.uploadProductImages(newImageFiles);
-        updateData.images = imageUrls;
         updateData.image = imageUrls[0];
       }
 
