@@ -10,6 +10,7 @@ export interface UserProfile {
   phoneNumber: string;
   gender: "male" | "female" | "";
   photoURL?: string;
+  address?: string;
   role?: "admin" | "user"; // Make role optional for existing users
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -22,9 +23,27 @@ export interface CreateUserProfileData {
   gender: "male" | "female" | "";
 }
 
+export interface UpdateUserData {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  gender: string;
+  role: string;
+  address?: string;
+}
+
 export class UserService {
   private static getUserDocRef(userId: string) {
     return doc(db, "users", userId);
+  }
+
+  // Update user profile in Firestore
+  static async updateUser(userId: string, data: UpdateUserData): Promise<void> {
+    const userRef = this.getUserDocRef(userId);
+    await updateDoc(userRef, {
+      ...data,
+      updatedAt: Timestamp.now(),
+    });
   }
 
   // Create user profile in Firestore

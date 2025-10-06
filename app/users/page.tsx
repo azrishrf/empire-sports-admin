@@ -3,12 +3,24 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { UserProfile, UserService } from "@/lib/userService";
 import { ChevronLeft, ChevronRight, Download, Edit, Search, Shield, User, Users as UsersIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -16,6 +28,18 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    gender: "",
+    role: "",
+    address: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,8 +90,46 @@ export default function UsersPage() {
   };
 
   const handleExportUsers = () => {
-    // TODO: Implement export functionality
-    console.log("Exporting users...");
+    if (!users || users.length === 0) {
+      toast.error("No users to export");
+      return;
+    }
+
+    // Prepare data for export
+    const exportData = users.map((user) => ({
+      "User ID": user.uid,
+      Name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "N/A",
+      Email: user.email,
+      Phone: user.phoneNumber || "N/A",
+      Role: user.role || "customer",
+      Address: user.address || "N/A",
+      "Account Created": user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : "N/A",
+      "Last Updated": user.updatedAt ? new Date(user.updatedAt.seconds * 1000).toLocaleDateString() : "N/A",
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 25 }, // User ID
+      { wch: 20 }, // Name
+      { wch: 25 }, // Email
+      { wch: 15 }, // Phone
+      { wch: 10 }, // Role
+      { wch: 15 }, // Account Created
+      { wch: 15 }, // Last Sign In
+    ];
+    ws["!cols"] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Users");
+
+    // Generate and download file
+    const fileName = `empire-sports-users.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success("Users exported successfully");
   };
 
   if (loading) {
@@ -238,7 +300,19 @@ export default function UsersPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  //   onClick={() => handleToggleAdminRole(user.uid, user.role)}
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setEditForm({
+                                      firstName: user.firstName,
+                                      lastName: user.lastName,
+                                      email: user.email,
+                                      phoneNumber: user.phoneNumber || "",
+                                      gender: user.gender || "",
+                                      role: user.role || "user",
+                                      address: user.address || "",
+                                    });
+                                    setIsEditing(true);
+                                  }}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -306,6 +380,127 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User Details</DialogTitle>
+            <DialogDescription>Make changes to the user information below.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedUser || isSubmitting) return;
+
+              try {
+                setIsSubmitting(true);
+                await UserService.updateUser(selectedUser.uid, editForm);
+                await fetchUsers(); // Refresh user list
+                toast.success("User updated successfully");
+                setIsEditing(false);
+              } catch (error) {
+                console.error("Error updating user:", error);
+                toast.error("Failed to update user");
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          >
+            <div className="py- grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea
+                  id="address"
+                  rows={3}
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={editForm.gender} onValueChange={(value) => setEditForm({ ...editForm, gender: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">User Role</Label>
+                <Select value={editForm.role} onValueChange={(value) => setEditForm({ ...editForm, role: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

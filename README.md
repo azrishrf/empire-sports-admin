@@ -1,4 +1,4 @@
-# 🛠️ Empire Sports - Admin Dashboard
+# Empire Sports - Admin Dashboard
 
 The **Empire Sports Admin Dashboard** is a secure, role-based authentication system for managing products, orders, and users within the **Empire Sports E-commerce Platform**.  
 It provides a modern, responsive interface for store management with real-time data and comprehensive analytics.

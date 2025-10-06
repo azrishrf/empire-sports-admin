@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminService } from "@/lib/adminService";
 import { Order } from "@/lib/orderService";
-import { ChevronLeft, ChevronRight, Eye, Filter, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Eye, Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 // Helper function
 const formatCurrency = (amount: number) => {
@@ -92,8 +94,54 @@ export default function OrdersPage() {
   };
 
   const handleExportOrders = () => {
-    // TODO: Implement export functionality
-    console.log("Exporting orders...");
+    if (!orders || orders.length === 0) {
+      toast.error("No orders to export");
+      return;
+    }
+
+    // Prepare data for export
+    const exportData = orders.map((order) => {
+      // Calculate items summary
+      const itemsSummary = order.items
+        .map((item) => `${item.name} (${item.size}) x${item.quantity} - ${formatCurrency(item.price)}`)
+        .join("\n");
+
+      return {
+        "Order ID": order.orderId,
+        Date: order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : "N/A",
+        Status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
+        "Customer Name": order.customerName,
+        "Customer Email": order.customerEmail,
+        "Customer Phone": order.customerPhone || "N/A",
+        Items: itemsSummary,
+        "Total Amount": formatCurrency(order.totalAmount),
+      };
+    });
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 15 }, // Order ID
+      { wch: 12 }, // Date
+      { wch: 10 }, // Status
+      { wch: 20 }, // Customer Name
+      { wch: 25 }, // Customer Email
+      { wch: 15 }, // Customer Phone
+      { wch: 50 }, // Items
+      { wch: 15 }, // Total Amount
+    ];
+    ws["!cols"] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Orders");
+
+    // Generate and download file
+    const fileName = `empire-sports-orders.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success("Orders exported successfully");
   };
 
   if (loading) {
@@ -186,10 +234,10 @@ export default function OrdersPage() {
                 <CardTitle className="text-primary">Order Management</CardTitle>
                 <CardDescription>View and manage customer orders</CardDescription>
               </div>
-              {/* <Button onClick={handleExportOrders} variant="outline">
+              <Button onClick={handleExportOrders} variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export Orders
-              </Button> */}
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -279,7 +327,7 @@ export default function OrdersPage() {
 
             {/* Order Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-              <DialogContent className="!max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-h-[90vh] !max-w-5xl overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Order Details</DialogTitle>
                 </DialogHeader>
