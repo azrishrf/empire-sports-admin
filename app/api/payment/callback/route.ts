@@ -48,9 +48,6 @@ export async function POST(request: NextRequest) {
 
     // Process payment based on status
     if (status === "1") {
-      // Payment successful
-      console.log(`Payment successful for order ${order_id}: ${refno}`);
-
       try {
         // Find and update order in Firestore
         const order = await ServerOrderService.getOrderByOrderId(order_id);
@@ -61,7 +58,6 @@ export async function POST(request: NextRequest) {
             billCode: billcode,
             notes: `Payment completed at ${transaction_time}. Amount: ${amount}`,
           });
-          console.log(`Order ${order_id} updated with payment success`);
         } else {
           console.warn(`Order ${order_id} not found in database`);
         }
@@ -80,9 +76,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (status === "2") {
-      // Payment pending
-      console.log(`Payment pending for order ${order_id}: ${refno}`);
-
       return NextResponse.json({
         success: true,
         message: "Payment is pending",
@@ -93,9 +86,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (status === "3") {
-      // Payment failed
-      console.log(`Payment failed for order ${order_id}: ${reason}`);
-
       try {
         // Find and update order in Firestore
         const order = await ServerOrderService.getOrderByOrderId(order_id);
@@ -105,7 +95,6 @@ export async function POST(request: NextRequest) {
             billCode: billcode,
             notes: `Payment failed: ${reason}`,
           });
-          console.log(`Order ${order_id} updated with payment failure`);
         } else {
           console.warn(`Order ${order_id} not found in database`);
         }
@@ -124,9 +113,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Unknown status
-      console.log(`Unknown payment status ${status} for order ${order_id}`);
-
       return NextResponse.json({
         success: false,
         message: "Unknown payment status",
@@ -155,8 +141,6 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const billcode = searchParams.get("billcode");
   const order_id = searchParams.get("order_id");
-
-  console.log("Payment callback GET:", { status, billcode, order_id });
 
   return NextResponse.json({
     success: true,

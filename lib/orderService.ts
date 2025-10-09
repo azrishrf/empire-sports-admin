@@ -51,8 +51,6 @@ export class OrderService {
    */
   static async createOrder(orderData: Omit<Order, "id" | "createdAt" | "updatedAt">): Promise<string> {
     try {
-      console.log("Creating order with data:", JSON.stringify(orderData, null, 2));
-
       const now = Timestamp.now();
       const order: Omit<Order, "id"> = {
         ...orderData,
@@ -60,21 +58,7 @@ export class OrderService {
         updatedAt: now,
       };
 
-      console.log(
-        "Final order object:",
-        JSON.stringify(
-          {
-            ...order,
-            createdAt: "Timestamp",
-            updatedAt: "Timestamp",
-          },
-          null,
-          2,
-        ),
-      );
-
       const docRef = await addDoc(collection(db, this.COLLECTION_NAME), order);
-      console.log("Order created with ID:", docRef.id);
       return docRef.id;
     } catch (error) {
       console.error("Error creating order:", error);
@@ -148,7 +132,6 @@ export class OrderService {
         ...updates,
         updatedAt: Timestamp.now(),
       });
-      console.log("Order updated:", orderId);
     } catch (error) {
       console.error("Error updating order:", error);
       throw new Error("Failed to update order");
@@ -188,7 +171,6 @@ export class OrderService {
 
       const docRef = doc(db, this.COLLECTION_NAME, orderId);
       await updateDoc(docRef, updates);
-      console.log("Order payment status updated:", orderId);
     } catch (error) {
       console.error("Error updating order payment status:", error);
       throw new Error("Failed to update order payment status");

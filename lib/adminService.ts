@@ -67,8 +67,6 @@ export class AdminService {
       // Ensure we have an authenticated user (waits for Firebase to hydrate on refresh)
       await this.requireUser();
 
-      console.log("Fetching real dashboard data from Firestore...");
-
       // Get current month data
       const now = new Date();
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -102,7 +100,6 @@ export class AdminService {
           }
           // Check if order is in last month
           else if (orderDate >= startOfLastMonth && orderDate <= endOfLastMonth) {
-            console.log("test order: ", order);
             lastMonthRevenue += orderAmount;
             lastMonthOrders++;
           }
@@ -134,19 +131,6 @@ export class AdminService {
       const usersSnapshot = await getDocs(usersCollection);
       const totalUsers = usersSnapshot.size;
 
-      console.log("Successfully fetched real data:", {
-        totalRevenue,
-        totalOrders,
-        totalProducts,
-        totalUsers,
-        currentMonthRevenue,
-        lastMonthRevenue,
-        currentMonthOrders,
-        lastMonthOrders,
-        revenueGrowth: revenueGrowth.toFixed(1),
-        ordersGrowth: ordersGrowth.toFixed(1),
-      });
-
       return {
         totalRevenue,
         totalOrders,
@@ -174,8 +158,6 @@ export class AdminService {
     try {
       await this.requireUser();
 
-      console.log("Fetching real orders data from Firestore...");
-
       const ordersCollection = collection(db, "orders");
       const ordersQuery = query(ordersCollection, orderBy("createdAt", "desc"), limit(limitCount));
       const querySnapshot = await getDocs(ordersQuery);
@@ -189,7 +171,6 @@ export class AdminService {
         });
       });
 
-      console.log(`Successfully fetched ${orders.length} real orders`);
       return orders;
     } catch (error) {
       console.error("Error fetching recent orders:", error);
@@ -213,8 +194,6 @@ export class AdminService {
       });
 
       try {
-        console.log("Fetching real top products data from Firestore...");
-
         // Get all successful orders (matching the status used in dashboard stats)
         const ordersCollection = collection(db, "orders");
         const ordersQuery = query(ordersCollection, where("paymentStatus", "==", "success"));
@@ -275,8 +254,6 @@ export class AdminService {
     try {
       await this.requireUser();
 
-      console.log("Fetching category distribution from Firestore...");
-
       const ordersCollection = collection(db, "orders");
       const ordersQuery = query(ordersCollection, where("paymentStatus", "==", "success"));
       const ordersSnapshot = await getDocs(ordersQuery);
@@ -336,7 +313,6 @@ export class AdminService {
         }))
         .sort((a, b) => b.value - a.value); // Sort by value descending
 
-      console.log(`Successfully calculated category distribution for ${totalItems} items`);
       return categoryData;
     } catch (error) {
       console.error("Error fetching category distribution:", error);
@@ -386,8 +362,6 @@ export class AdminService {
     try {
       await this.requireUser();
 
-      console.log(`Fetching chart data for ${period} view...`);
-
       const ordersCollection = collection(db, "orders");
       const ordersSnapshot = await getDocs(ordersCollection);
 
@@ -403,7 +377,6 @@ export class AdminService {
           if (period === "day") {
             // Format: "2025-09-30"
             dateKey = orderDate.toISOString().split("T")[0];
-            console.log("test dateKey: ", dateKey);
           } else {
             // Format: "2025-09" for months
             dateKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, "0")}`;
@@ -433,7 +406,6 @@ export class AdminService {
           ? chartDataPoints.slice(-30) // Last 30 days
           : chartDataPoints.slice(-12); // Last 12 months
 
-      console.log(`Successfully fetched ${limitedData.length} ${period} data points`);
       return limitedData;
     } catch (error) {
       console.error("Error fetching chart data:", error);

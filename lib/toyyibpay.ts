@@ -122,7 +122,6 @@ export class ToyyibPayService {
       }
 
       const responseText = await response.text();
-      console.log("ToyyibPay raw response:", responseText);
 
       // Try to parse as JSON
       let result;
@@ -214,7 +213,6 @@ export class ToyyibPayService {
    */
   static verifyCallback(data: Record<string, unknown>, signature: string): boolean {
     // Log the callback data for debugging
-    console.log("Verifying callback:", { data, signature });
 
     // For now, we'll do basic validation
     // In production, you should implement proper signature verification

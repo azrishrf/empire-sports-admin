@@ -69,7 +69,6 @@ export class UserService {
       }
 
       await setDoc(userRef, userProfile);
-      console.log("User profile created successfully:", userProfile);
     } catch (error) {
       console.error("Error creating user profile:", error);
       throw error;
@@ -84,10 +83,8 @@ export class UserService {
 
       if (userSnap.exists()) {
         const userData = userSnap.data() as UserProfile;
-        console.log("User profile loaded:", userData);
         return userData;
       } else {
-        console.log("No user profile found");
         return null;
       }
     } catch (error) {
@@ -113,7 +110,6 @@ export class UserService {
       const cleanedData = Object.fromEntries(Object.entries(updatedData).filter(([, value]) => value !== undefined));
 
       await updateDoc(userRef, cleanedData);
-      console.log("User profile updated successfully");
     } catch (error) {
       console.error("Error updating user profile:", error);
       throw error;
@@ -128,7 +124,6 @@ export class UserService {
       // Check if profile already exists
       const existingProfile = await getDoc(userRef);
       if (existingProfile.exists()) {
-        console.log("Google user profile already exists");
         return;
       }
 
@@ -155,7 +150,6 @@ export class UserService {
       }
 
       await setDoc(userRef, userProfile);
-      console.log("Google user profile created successfully:", userProfile);
     } catch (error) {
       console.error("Error creating Google user profile:", error);
       throw error;
@@ -188,7 +182,6 @@ export class UserService {
   static async setUserAsAdmin(userId: string): Promise<void> {
     try {
       await this.updateUserProfile(userId, { role: "admin" });
-      console.log("User set as admin successfully");
     } catch (error) {
       console.error("Error setting user as admin:", error);
       throw error;
@@ -213,7 +206,6 @@ export class UserService {
         users.push(userProfile);
       });
 
-      console.log(`Fetched ${users.length} users from Firestore`);
       return users;
     } catch (error) {
       console.error("Error fetching all users:", error);
@@ -222,10 +214,7 @@ export class UserService {
   }
 
   // Get users with pagination
-  static async getUsersWithPagination(
-    limit: number = 50,
-    lastUserId?: string,
-  ): Promise<{
+  static async getUsersWithPagination(limit: number = 50): Promise<{
     users: UserProfile[];
     hasMore: boolean;
     lastUserId?: string;
@@ -233,16 +222,6 @@ export class UserService {
     try {
       const usersCollection = collection(db, "users");
       const usersQuery = query(usersCollection, orderBy("createdAt", "desc"));
-
-      // Add pagination if lastUserId is provided
-      if (lastUserId) {
-        const lastUserDoc = await getDoc(doc(db, "users", lastUserId));
-        if (lastUserDoc.exists()) {
-          // Note: For proper pagination, you'd need to use startAfter with the last document
-          // This is a simplified version
-          console.log("Pagination from user:", lastUserId);
-        }
-      }
 
       const querySnapshot = await getDocs(usersQuery);
       const users: UserProfile[] = [];
@@ -258,8 +237,6 @@ export class UserService {
 
       const hasMore = querySnapshot.size > limit;
       const newLastUserId = users.length > 0 ? users[users.length - 1].uid : undefined;
-
-      console.log(`Fetched ${users.length} users (limit: ${limit}, hasMore: ${hasMore})`);
 
       return {
         users,
