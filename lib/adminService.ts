@@ -96,6 +96,7 @@ export class AdminService {
           }
           // Check if order is in last month
           else if (orderDate >= startOfLastMonth && orderDate <= endOfLastMonth) {
+            console.log("test order: ", order);
             lastMonthRevenue += orderAmount;
             lastMonthOrders++;
           }
@@ -245,7 +246,6 @@ export class AdminService {
           .sort((a, b) => b.sales - a.sales) // Sort by sales descending (highest first)
           .slice(0, limitCount);
 
-
         return topProducts;
       } catch (firestoreError) {
         console.error("Products/Orders data access failed:", firestoreError);
@@ -286,6 +286,7 @@ export class AdminService {
           if (period === "day") {
             // Format: "2025-09-30"
             dateKey = orderDate.toISOString().split("T")[0];
+            console.log("test dateKey: ", dateKey);
           } else {
             // Format: "2025-09" for months
             dateKey = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, "0")}`;

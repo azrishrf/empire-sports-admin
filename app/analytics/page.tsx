@@ -3,7 +3,7 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AdminService, AdminStats } from "@/lib/adminService";
+import { AdminService, AdminStats, ChartDataPoint } from "@/lib/adminService";
 import { BarChart3, DollarSign, Package, ShoppingCart, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -22,16 +22,7 @@ import {
   YAxis,
 } from "recharts";
 
-// Sample data for charts (replace with real data from your analytics service)
-const revenueData = [
-  { month: "Jan", revenue: 12000, orders: 45 },
-  { month: "Feb", revenue: 15000, orders: 52 },
-  { month: "Mar", revenue: 18000, orders: 61 },
-  { month: "Apr", revenue: 16000, orders: 48 },
-  { month: "May", revenue: 22000, orders: 73 },
-  { month: "Jun", revenue: 25000, orders: 81 },
-];
-
+// Sample data for charts that don't have real data yet
 const categoryData = [
   { name: "Basketball", value: 35, color: "#0088FE" },
   { name: "Running", value: 25, color: "#00C49F" },
@@ -50,6 +41,7 @@ const topProductsData = [
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [revenueData, setRevenueData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30d");
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +53,33 @@ export default function AnalyticsPage() {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const dashboardStats = await AdminService.getDashboardStats();
+      // Fetch dashboard stats and revenue data in parallel
+      const [dashboardStats, chartData] = await Promise.all([
+        AdminService.getDashboardStats(),
+        AdminService.getChartData("month"),
+      ]);
+
       setStats(dashboardStats);
+
+      // Transform chart data to include month names
+      const transformedData = chartData.map((item) => {
+        const date = new Date(item.date + "-01"); // Add day to make it a valid date
+        const monthName = date.toLocaleDateString("en-US", { month: "short" });
+        return {
+          month: monthName,
+          revenue: item.revenue,
+          orders: item.orders,
+          date: item.date,
+        };
+      });
+
+      setRevenueData(transformedData);
       setError(null);
     } catch (error) {
       console.error("Error fetching analytics data:", error);
       setError("Failed to fetch analytics data");
+      // Set empty data on error to prevent chart crashes
+      setRevenueData([]);
     } finally {
       setLoading(false);
     }
@@ -184,7 +197,7 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={revenueData}>
+                  <LineChart data={revenueData.length > 0 ? revenueData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -194,6 +207,11 @@ export default function AnalyticsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+              {revenueData.length === 0 && !loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-muted-foreground">No revenue data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -206,7 +224,7 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueData}>
+                  <BarChart data={revenueData.length > 0 ? revenueData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -216,6 +234,11 @@ export default function AnalyticsPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              {revenueData.length === 0 && !loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-muted-foreground">No orders data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -315,7 +338,10 @@ export default function AnalyticsPage() {
                 <BarChart3 className="mx-auto mb-4 h-12 w-12" />
                 <p className="mb-2">{error}</p>
                 <p className="text-muted-foreground text-sm">
-                  The charts above show sample data. Implement real analytics data integration for accurate insights.
+                  Revenue and orders data: Real Firebase data. Category and top products charts: Sample data.
+                  {revenueData.length === 0
+                    ? " No real order data found in Firebase."
+                    : ` Showing ${revenueData.length} months of real data.`}
                 </p>
               </div>
             </CardContent>
