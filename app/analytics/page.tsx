@@ -3,7 +3,7 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AdminService, AdminStats, ChartDataPoint } from "@/lib/adminService";
+import { AdminService, AdminStats, CategoryData, ChartDataPoint } from "@/lib/adminService";
 import { BarChart3, DollarSign, Package, ShoppingCart, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -22,26 +22,17 @@ import {
   YAxis,
 } from "recharts";
 
-// Sample data for charts that don't have real data yet
-const categoryData = [
-  { name: "Basketball", value: 35, color: "#0088FE" },
-  { name: "Running", value: 25, color: "#00C49F" },
-  { name: "Clothing", value: 20, color: "#FFBB28" },
-  { name: "Sneakers", value: 15, color: "#FF8042" },
-  { name: "Other", value: 5, color: "#8884D8" },
-];
-
-const topProductsData = [
-  { name: "Nike Air Force 1", sales: 145, revenue: 14500 },
-  { name: "Basketball Pro", sales: 120, revenue: 12000 },
-  { name: "Running Shoes", sales: 98, revenue: 9800 },
-  { name: "Sports T-Shirt", sales: 87, revenue: 4350 },
-  { name: "Training Shorts", sales: 76, revenue: 3800 },
-];
+interface TopProductChartData {
+  name: string;
+  sales: number;
+  revenue: number;
+}
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [revenueData, setRevenueData] = useState<ChartDataPoint[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [topProductsData, setTopProductsData] = useState<TopProductChartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30d");
   const [error, setError] = useState<string | null>(null);
@@ -53,10 +44,12 @@ export default function AnalyticsPage() {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      // Fetch dashboard stats and revenue data in parallel
-      const [dashboardStats, chartData] = await Promise.all([
+      // Fetch all data in parallel
+      const [dashboardStats, chartData, categoryDistribution, topProducts] = await Promise.all([
         AdminService.getDashboardStats(),
         AdminService.getChartData("month"),
+        AdminService.getCategoryDistribution(),
+        AdminService.getTopProducts(5),
       ]);
 
       setStats(dashboardStats);
@@ -74,12 +67,27 @@ export default function AnalyticsPage() {
       });
 
       setRevenueData(transformedData);
+
+      // Set real category data or fallback
+      setCategoryData(categoryDistribution);
+
+      // Transform top products data for the chart
+      const transformedTopProducts = topProducts.map((product) => ({
+        name: product.name,
+        sales: product.sales,
+        revenue: parseFloat(product.revenue.replace(/[^0-9.-]+/g, "")), // Remove currency formatting
+      }));
+
+      setTopProductsData(transformedTopProducts);
+
       setError(null);
     } catch (error) {
       console.error("Error fetching analytics data:", error);
       setError("Failed to fetch analytics data");
-      // Set empty data on error to prevent chart crashes
+      // Set fallback data on error to prevent chart crashes
       setRevenueData([]);
+      setCategoryData([]);
+      setTopProductsData([]);
     } finally {
       setLoading(false);
     }
@@ -273,6 +281,11 @@ export default function AnalyticsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              {categoryData.length === 0 && !loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-muted-foreground">No category data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -285,15 +298,30 @@ export default function AnalyticsPage() {
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topProductsData} layout="horizontal">
+                  <BarChart data={topProductsData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip formatter={(value) => [value, "Sales"]} />
+                    <XAxis
+                      dataKey="name"
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      tick={{ fontSize: 10 }}
+                      interval={0}
+                    />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => [value, name === "sales" ? "Units Sold" : name]}
+                      labelFormatter={(label) => `Product: ${label}`}
+                    />
                     <Bar dataKey="sales" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              {topProductsData.length === 0 && !loading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <p className="text-muted-foreground">No top products data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -338,10 +366,10 @@ export default function AnalyticsPage() {
                 <BarChart3 className="mx-auto mb-4 h-12 w-12" />
                 <p className="mb-2">{error}</p>
                 <p className="text-muted-foreground text-sm">
-                  Revenue and orders data: Real Firebase data. Category and top products charts: Sample data.
+                  Revenue, orders, category distribution, and top products data: Real Firebase data.
                   {revenueData.length === 0
-                    ? " No real order data found in Firebase."
-                    : ` Showing ${revenueData.length} months of real data.`}
+                    ? " No real order data found in Firebase - showing fallback data for charts."
+                    : ` Showing real data from ${revenueData.length} months of orders.`}
                 </p>
               </div>
             </CardContent>

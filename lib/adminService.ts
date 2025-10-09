@@ -19,6 +19,12 @@ export interface TopProduct {
   revenue: string;
 }
 
+export interface CategoryData {
+  name: string;
+  value: number;
+  color: string;
+}
+
 export interface ChartDataPoint {
   date: string;
   revenue: number;
@@ -260,6 +266,117 @@ export class AdminService {
       console.error("Error fetching top products:", error);
       throw error;
     }
+  }
+
+  /**
+   * Get category distribution from real order data
+   */
+  static async getCategoryDistribution(): Promise<CategoryData[]> {
+    try {
+      await this.requireUser();
+
+      console.log("Fetching category distribution from Firestore...");
+
+      const ordersCollection = collection(db, "orders");
+      const ordersQuery = query(ordersCollection, where("paymentStatus", "==", "success"));
+      const ordersSnapshot = await getDocs(ordersQuery);
+
+      // Fetch all products to get their categories
+      const productsCollection = collection(db, "products");
+      const productsSnapshot = await getDocs(productsCollection);
+
+      // Create a map of product names to their categories
+      const productCategoryMap: { [key: string]: string } = {};
+      productsSnapshot.forEach((doc) => {
+        const product = doc.data();
+        const productName = product.name?.toLowerCase();
+        const category = product.category || this.categorizeByName(product.name);
+        if (productName) {
+          productCategoryMap[productName] = category;
+        }
+      });
+
+      // Count sales by category (based on product collection data)
+      const categoryCount: { [key: string]: number } = {};
+      let totalItems = 0;
+
+      ordersSnapshot.forEach((doc) => {
+        const order = doc.data() as Order;
+        order.items.forEach((item) => {
+          const itemName = item.name.toLowerCase();
+
+          // Look up category from products collection first
+          let category = productCategoryMap[itemName];
+
+          // If not found in products collection, use keyword matching as fallback
+          if (!category) {
+            category = this.categorizeByName(item.name);
+          }
+
+          categoryCount[category] = (categoryCount[category] || 0) + item.quantity;
+          totalItems += item.quantity;
+        });
+      });
+
+      // Define colors for categories
+      const categoryColors: { [key: string]: string } = {
+        Basketball: "#0088FE",
+        Running: "#00C49F",
+        Clothing: "#FFBB28",
+        Sneakers: "#FF8042",
+        Other: "#8884D8",
+      };
+
+      // Convert to percentage and create array
+      const categoryData: CategoryData[] = Object.entries(categoryCount)
+        .map(([name, count]) => ({
+          name,
+          value: totalItems > 0 ? Math.round((count / totalItems) * 100) : 0,
+          color: categoryColors[name] || "#8884D8",
+        }))
+        .sort((a, b) => b.value - a.value); // Sort by value descending
+
+      console.log(`Successfully calculated category distribution for ${totalItems} items`);
+      return categoryData;
+    } catch (error) {
+      console.error("Error fetching category distribution:", error);
+      if (error instanceof Error && error.message.includes("Missing or insufficient permissions")) {
+        throw new Error(
+          "Firestore permissions denied. Please update your Firebase security rules to allow admin access to orders collection.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to categorize products by name keywords (fallback)
+   */
+  private static categorizeByName(productName: string): string {
+    const itemName = productName.toLowerCase();
+
+    // Categorize based on product name keywords
+    if (itemName.includes("basketball") || itemName.includes("ball")) {
+      return "Basketball";
+    } else if (itemName.includes("running") || itemName.includes("run")) {
+      return "Running";
+    } else if (
+      itemName.includes("shirt") ||
+      itemName.includes("clothing") ||
+      itemName.includes("shorts") ||
+      itemName.includes("apparel")
+    ) {
+      return "Clothing";
+    } else if (
+      itemName.includes("sneaker") ||
+      itemName.includes("shoe") ||
+      itemName.includes("nike") ||
+      itemName.includes("adidas")
+    ) {
+      return "Sneakers";
+    }
+
+    return "Other";
   }
 
   /**
