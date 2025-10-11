@@ -2,7 +2,6 @@
 
 import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminService, AdminStats, CategoryData, ChartDataPoint } from "@/lib/adminService";
 import { BarChart3, DollarSign, Package, ShoppingCart, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -120,7 +119,7 @@ export default function AnalyticsPage() {
         {/* Time Range Selector */}
         <div className="flex items-center justify-between">
           <h2 className="text-primary text-2xl font-bold">Business Analytics</h2>
-          <Select value={timeRange} onValueChange={setTimeRange}>
+          {/* <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
@@ -130,7 +129,7 @@ export default function AnalyticsPage() {
               <SelectItem value="90d">Last 3 months</SelectItem>
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
         </div>
 
         {/* Key Metrics */}
