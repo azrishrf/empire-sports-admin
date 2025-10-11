@@ -327,7 +327,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Additional Insights */}
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle className="text-primary">Conversion Rate</CardTitle>
@@ -357,7 +357,7 @@ export default function AnalyticsPage() {
               <p className="text-muted-foreground text-sm">Average customer value</p>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
 
         {error && (
           <Card>
